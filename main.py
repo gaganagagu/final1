@@ -16,11 +16,9 @@ warnings.simplefilter('ignore')
 train = pd.read_csv('train2.csv')
 test = pd.read_csv('test2.csv')
 
-
 # Splitting the data into independent & dependent variables -
-X_train, y_train =  base.splitter(train, y_var='DISEASE')
-X_test, y_test =  base.splitter(test, y_var='DISEASE')
-
+X_train, y_train = base.splitter(train, y_var='DISEASE')
+X_test, y_test = base.splitter(test, y_var='DISEASE')
 
 # Standardizing the data -
 from sklearn.preprocessing import StandardScaler
@@ -30,24 +28,20 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 model = keras.Sequential([
-                          keras.layers.Dense(units=128, input_shape=(13,), activation='relu', kernel_regularizer=regularizers.l2(2.0)),
-                          keras.layers.BatchNormalization(axis=1),
-                          keras.layers.Dense(units=64, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
-                          keras.layers.BatchNormalization(axis=1),
-                          keras.layers.Dense(units=32, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
-                          keras.layers.BatchNormalization(axis=1),
-                          keras.layers.Dense(units=16, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
-                          keras.layers.BatchNormalization(axis=1),
-                          keras.layers.Dense(units=1, activation='sigmoid', kernel_regularizer=regularizers.l2(0.001))
-                         ])
-
-
-adam=keras.optimizers.Adam(learning_rate=0.001)
+    keras.layers.Dense(units=128, input_shape=(13,), activation='relu', kernel_regularizer=regularizers.l2(2.0)),
+    keras.layers.BatchNormalization(axis=1),
+    keras.layers.Dense(units=64, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
+    keras.layers.BatchNormalization(axis=1),
+    keras.layers.Dense(units=32, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
+    keras.layers.BatchNormalization(axis=1),
+    keras.layers.Dense(units=16, activation='relu', kernel_regularizer=regularizers.l2(0.001)),
+    keras.layers.BatchNormalization(axis=1),
+    keras.layers.Dense(units=1, activation='sigmoid', kernel_regularizer=regularizers.l2(0.001))
+])
+adam = keras.optimizers.Adam(learning_rate=0.001)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=['accuracy'])
 
-
 print(model.summary())
-
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10, mode='min', verbose=1)
 mc = tf.keras.callbacks.ModelCheckpoint(filepath='model.weights.h5', monitor='val_accuracy', save_best_only=True, save_weights_only=True)
@@ -57,25 +51,18 @@ print("X_test_scaled shape:", X_test_scaled.shape)
 
 hist = model.fit(X_train_scaled, y_train, validation_data=(X_test_scaled, y_test), 
                  epochs=100, batch_size=32, callbacks=[es, mc], verbose=1)
-
-
 _, train_acc = model.evaluate(X_train_scaled, y_train, batch_size=32, verbose=0)
 _, test_acc = model.evaluate(X_test_scaled, y_test, batch_size=32, verbose=0)
 
 print('Train Accuracy: {:.3f}'.format(train_acc))
 print('Test Accuracy: {:.3f}'.format(test_acc))
 
-
 y_pred_proba = model.predict(X_test_scaled, batch_size=32, verbose=0)
 
 threshold = 0.50
 y_pred_class = np.where(y_pred_proba > threshold, 1, 0)
-
-
-# from keras.utils.vis_utils import plot_model
-# plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
-
-
+ 
+# Loss Curve
 plt.figure(figsize=(10, 5))
 plt.plot(hist.history['loss'], label='train')
 plt.plot(hist.history['val_loss'], label='test')
@@ -86,7 +73,7 @@ plt.legend(loc='upper right')
 plt.grid(True)
 plt.show()
 
-
+# Accuracy Curve
 plt.figure(figsize=(10, 5))
 plt.plot(hist.history['accuracy'], label='train')
 plt.plot(hist.history['val_accuracy'], label='test')
@@ -97,7 +84,7 @@ plt.legend(loc='lower right')
 plt.grid(True)
 plt.show()
 
-
+# ROC Curve
 from sklearn.metrics import roc_auc_score, roc_curve
 
 logit_roc_auc = roc_auc_score(y_test, y_pred_proba)
@@ -105,7 +92,7 @@ fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
 
 plt.figure()
 plt.plot(fpr, tpr, label='(area = %0.2f)' % logit_roc_auc)
-plt.plot([0, 1], [0, 1],'r--')
+plt.plot([0, 1], [0, 1], 'r--')
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('False Positive Rate')
@@ -114,9 +101,9 @@ plt.title('Receiver Operating Characteristic')
 plt.legend(loc="lower right")
 plt.show()
 
+from sklearn.metrics import precision_recall_curve, confusion_matrix
 
-from sklearn.metrics import precision_recall_curve
-    
+# Precision-Recall Curve
 precisions, recalls, thresholds = precision_recall_curve(y_test, y_pred_proba)
 
 min_length = min(len(thresholds), len(precisions) - 1, len(recalls) - 1)
@@ -126,33 +113,26 @@ recalls = recalls[:min_length]
 
 plt.plot(thresholds, precisions, label='Precision')
 plt.plot(thresholds, recalls, label='Recall')
-
-start, end = plt.xlim()
-plt.xticks(np.round(np.arange(start, end, 0.1), 2))
-
-plt.xlabel('Threshold Value'); plt.ylabel('Precision and Recall Value')
-plt.legend(); plt.grid()
+plt.xlabel('Threshold Value')
+plt.ylabel('Precision and Recall Value')
+plt.legend()
+plt.grid()
 plt.show()
 
-
-from sklearn.metrics import confusion_matrix
+# Confusion Matrix
 cm = confusion_matrix(y_test, y_pred_class)
 
-plt.figure(figsize = (10, 7))
+plt.figure(figsize=(10, 7))
 sns.heatmap(cm, annot=True, fmt='d', cbar=False, cmap='Blues')
 plt.title('Confusion Matrix')
 plt.xlabel('Predicted label')
 plt.ylabel('Actual label')
 plt.show()
 
-
 from sklearn.metrics import classification_report
 print(classification_report(y_test, y_pred_class))
 
-
 model.save('model.h5')
-
-
 
 attrib_info = """
 #### Fields:
@@ -212,118 +192,88 @@ def ann_app():
     # Main header
     st.markdown('<p class="main-header">Heart Disease Prediction Model</p>', unsafe_allow_html=True)
     
-    # Load model
-    @st.cache_resource
-    def load_keras_model():
-        return tf.keras.models.load_model('model.h5')
+# Streamlit application
+@st.cache_resource
+def load_keras_model():
+    return tf.keras.models.load_model('model.h5')
 
-    loaded_model = load_keras_model()
+loaded_model = load_keras_model()
 
-    
-    # Create tabs for input and analysis
-    tab1, tab2 = st.tabs(["📝 Input Parameters", "📊 Model Analysis"])
-    
+def ann_app():
+    st.markdown("<h1 style='text-align: center; color: #1E88E5;'>Heart Disease Prediction</h1>", unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["📝 Input Parameters", "📊 Model Metrics"])
+
     with tab1:
-        # Create two columns with better spacing
-        col1, col2 = st.columns(2, gap="large")
+        st.markdown("### Patient Information")
         
-        with col1:
-            st.markdown("### Patient Metrics")
-            AGE = st.number_input("Age", min_value=0, max_value=120, step=1, 
-                                help="Enter patient's age")
-            RESTING_BP = st.number_input("Resting Blood Pressure", min_value=0, max_value=300, step=1,
-                                       help="Enter resting blood pressure in mm Hg")
-            SERUM_CHOLESTROL = st.number_input("Serum Cholesterol", min_value=0, max_value=1000, step=1,
-                                             help="Enter serum cholesterol level in mg/dl")
-            TRI_GLYCERIDE = st.number_input("Triglycerides", min_value=0, max_value=1000, step=1,
-                                          help="Enter triglyceride level in mg/dl")
-            LDL = st.number_input("LDL", min_value=0, max_value=300, step=1,
-                                help="Enter LDL cholesterol level in mg/dl")
-            HDL = st.number_input("HDL", min_value=0, max_value=100, step=1,
-                                help="Enter HDL cholesterol level in mg/dl")
-            FBS = st.number_input("Fasting Blood Sugar", min_value=0, max_value=500, step=1,
-                                help="Enter fasting blood sugar level in mg/dl")
-           
-        with col2:
-            st.markdown("### Clinical Parameters")
-            GENDER = st.selectbox('Gender', 
-                                options=[0, 1], 
-                                format_func=lambda x: "Female" if x == 0 else "Male",
-                                help="Select patient's gender")
-            
-            CHEST_PAIN = st.selectbox('Chest Pain', 
-                                    options=[0, 1],
-                                    format_func=lambda x: "No" if x == 0 else "Yes",
-                                    help="Presence of chest pain")
-            
-            RESTING_ECG = st.selectbox('Resting ECG', 
-                                     options=[0, 1],
-                                     format_func=lambda x: "Normal" if x == 0 else "Abnormal",
-                                     help="Resting electrocardiographic results")
-            
-            TMT = st.selectbox('TMT (Treadmill Test)', 
-                             options=[0, 1],
-                             format_func=lambda x: "Normal" if x == 0 else "Abnormal",
-                             help="Treadmill test results")
-            
-            ECHO = st.number_input("Echo", min_value=0, max_value=100, step=1,
-                                 help="Echocardiogram value")
-            
-            MAX_HEART_RATE = st.number_input("Maximum Heart Rate", 
-                                           min_value=0, max_value=250, step=1,
-                                           help="Maximum heart rate achieved")
+        # Collect user inputs
+        AGE = st.number_input("Age", min_value=0, max_value=120, step=1)
+        RESTING_BP = st.number_input("Resting Blood Pressure", min_value=0, max_value=300, step=1)
+        SERUM_CHOLESTROL = st.number_input("Serum Cholesterol", min_value=0, max_value=1000, step=1)
+        TRI_GLYCERIDE = st.number_input("Triglycerides", min_value=0, max_value=1000, step=1)
+        LDL = st.number_input("LDL", min_value=0, max_value=300, step=1)
+        HDL = st.number_input("HDL", min_value=0, max_value=100, step=1)
+        FBS = st.number_input("Fasting Blood Sugar", min_value=0, max_value=500, step=1)
+        GENDER = st.selectbox('Gender', options=["Female", "Male"], index=0)
+        CHEST_PAIN = st.selectbox('Chest Pain', options=["No", "Yes"], index=0)
+        RESTING_ECG = st.selectbox('Resting ECG', options=["Normal", "Abnormal"], index=0)
+        TMT = st.selectbox('TMT (Treadmill Test)', options=["Normal", "Abnormal"], index=0)
+        ECHO = st.number_input("Echo", min_value=0, max_value=100, step=1)
+        MAX_HEART_RATE = st.number_input("Maximum Heart Rate", min_value=0, max_value=250, step=1)
+
         
-        # Collect all inputs
-        encoded_results = [AGE, GENDER, CHEST_PAIN, RESTING_BP, SERUM_CHOLESTROL, 
-                         TRI_GLYCERIDE, LDL, HDL, FBS, RESTING_ECG, MAX_HEART_RATE, 
-                         ECHO, TMT]
+
         
         # Add a predict button
-        st.cache_data.clear()  # Clears any cached data before prediction
+        # Add a predict button
+        if st.button('Predict'):
+            # Prepare input
+            sample = np.array([AGE, GENDER == "Male", CHEST_PAIN == "Yes", RESTING_BP, SERUM_CHOLESTROL,
+                            TRI_GLYCERIDE, LDL, HDL, FBS, RESTING_ECG == "Abnormal", MAX_HEART_RATE,
+                            ECHO, TMT == "Abnormal"]).reshape(1, -1)
+            sample_scaled = scaler.transform(sample)
 
-        if st.button('Predict', type='primary', use_container_width=True):
-            # Show a spinner while predicting
-            with st.spinner('Analyzing...'):
-                from sklearn.preprocessing import StandardScaler
-                import base
+            # Prediction
+            prediction = loaded_model.predict(sample_scaled)[0][0]
+            predicted_percentage = prediction * 100
 
-                # Ensure the same scaling as training
-                X_train_scaled, _, _ = base.standardizer(X_train, X_test)  # Standardize training data once
-
-                # Scale user input before prediction
-                sample = np.array(encoded_results).reshape(1, -1)
-                sample_scaled = base.standardizer(X_train, sample)[0]  # Use the same scaler
-
-                # Make prediction using scaled input
-                prediction = loaded_model.predict(sample_scaled)
-
-                # Debugging Output
-                st.write(f"Scaled Input for Prediction: {sample_scaled}")
-                st.write(f"Raw Model Output: {prediction}")
-
-                # Process final prediction
-                rounded_prediction = np.around(prediction[0], decimals=2)
-
-                st.write(f"Processed Prediction: {rounded_prediction}")  # Debugging
-
-            
-                # Display prediction in a nice box
-                # Determine risk level
-            predicted_percentage = rounded_prediction[0] * 100
+            # Determine risk level with style
             if predicted_percentage < 40:
-              risk_level = "🟢 Low Risk"
-              advice = "Your heart health looks good! Maintain a healthy diet and stay active. 😊"
-              color = "#4CAF50"  # Green
+                risk_level = "🟢 Low Risk"
+                advice = "Your heart health looks good! Maintain a healthy diet and stay active. 😊"
+                color = "#4CAF50"  # Green
+                st.markdown("### 🍽 Diet Preferences")
+                st.markdown("""
+                        *🎉 Low Risk & On a Diet*:
+                        - ✅ *Maintain a balanced diet* — fruits, greens, healthy fats.
+                        - 🍎 *Include colorful veggies, grains, and lean protein*.
+                        - ✨ Keep up your great work — *your heart is smiling!* 😊
+                        """)
             elif 40 <= predicted_percentage < 70:
                 risk_level = "🟡 Moderate Risk"
                 advice = "Consider lifestyle improvements like regular exercise and a heart-healthy diet. 🏃🍏"
                 color = "#FFC107"  # Yellow
+                st.markdown("### 🍽 Diet Preferences")
+                st.markdown("""
+                        *⚡ Moderate Risk & On a Diet*:
+                        - 🍎 *Increase fiber intake* from fruits, veggies, whole grains.
+                        - 🥩 Balance *lean protein* and *healthy fats* (avoid junk).
+                        - 🏋 *Exercise regularly* to enhance results.
+                        """)
             else:
                 risk_level = "🔴 High Risk"
                 advice = "It's recommended to consult a doctor for further evaluation and guidance. 🚑"
                 color = "#F44336"  # Red
+                st.markdown("### 🍽 Diet Preferences")
+                st.markdown("""
+                        *🚨 High Risk & On a Diet*:
+                        - 🥗 Prioritize *whole grains, **lean proteins, **healthy fats*.
+                        - ❌ *Cut out processed, fried foods, and sugar-heavy snacks*.
+                        - 🩺 *Consult a dietitian* for an optimized heart-healthy plan.
+                        """)
 
-            # Display the results with risk interpretation
+            # Display the styled result box
             st.markdown(
                 f"""
                 <div style="
@@ -332,29 +282,29 @@ def ann_app():
                     padding: 20px;
                     text-align: center;
                     box-shadow: 2px 2px 12px rgba(0,0,0,0.1);
-                  ">
+                ">
                     <h2 style="color: #333;">Prediction Result</h2>
                     <h1 style="font-size: 48px; color: {color};">{predicted_percentage:.2f}%</h1>
                     <h3 style="color: {color};">{risk_level}</h3>
                     <p style="color: #555;">{advice}</p>
-                  </div>
-                  """,
-                  unsafe_allow_html=True
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
 
-    
-    with tab2:
-        st.markdown("""
-        ### Model Evaluation Metrics
-        
-        Explore the various metrics used to evaluate the model's performance:
-        """)
-        
-        metrics = st.radio(
-            "Select Metric to View:",
-            ["ROC-AUC Curve", "Model Loss", "Model Accuracy", "Precision-Recall", "Confusion Matrix"],
-            horizontal=True
+
+        with tab2:
+            st.markdown("""
+            ### Model Evaluation Metrics
+            
+            Explore the various metrics used to evaluate the model's performance:
+            """)
+            
+            metrics = st.radio(
+                "Select Metric to View:",
+                ["ROC-AUC Curve", "Model Loss", "Model Accuracy", "Precision-Recall", "Confusion Matrix"],
+                horizontal=True
         )
         
         # Create expandable sections for each plot
@@ -440,30 +390,30 @@ def ann_app():
 
         # Add explanation of metrics
         with st.expander("📚 Understanding the Metrics"):
-            st.markdown("""
+             st.markdown("""
             #### Detailed Explanation of Evaluation Metrics
             
-            1. **ROC-AUC Curve**
+            1. *ROC-AUC Curve*
             - Plots true positive rate vs false positive rate
             - Higher AUC indicates better model discrimination
             - Perfect classifier would have AUC = 1.0
             
-            2. **Model Loss Curve**
+            2. *Model Loss Curve*
             - Shows how well the model is learning over time
             - Decreasing loss indicates improving model performance
             - Gap between training and validation loss helps identify overfitting
             
-            3. **Model Accuracy Curve**
+            3. *Model Accuracy Curve*
             - Tracks prediction accuracy during training
             - Higher accuracy indicates better model performance
             - Helps monitor potential overfitting
             
-            4. **Precision-Recall Plot**
+            4. *Precision-Recall Plot*
             - Shows trade-off between precision and recall
             - Helps in choosing optimal threshold for classification
             - Important for imbalanced datasets
             
-            5. **Confusion Matrix**
+            5. *Confusion Matrix*
             - Shows true positives, false positives, true negatives, and false negatives
             - Helps understand model's classification performance
             - Useful for identifying specific types of errors
